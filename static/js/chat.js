@@ -1,61 +1,39 @@
 import { API_URL } from './config.js';
 
-export async function sendChatMessage(userId, message) {
+// 공통 POST 요청 함수
+async function postToApi(endpoint, payload) {
     try {
-        const response = await fetch(`${API_URL}/chat`, {
+        const response = await fetch(`${API_URL}/${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, user_id: userId })
+            body: JSON.stringify(payload)
         });
-
-        if (!response.ok) {
-            throw new Error(`서버 에러 발생: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('API 호출 중 에러:', error); // 오류 로그 유지
-        return { status: 'error', message: error.message };
-    }
-}
-
-export async function deleteConversationOnServer(userId, title) {
-    try {
-        const response = await fetch(`${API_URL}/delete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, title })
-        });
-
-        if (!response.ok) {
-            throw new Error('서버 삭제 실패');
-        }
 
         const result = await response.json();
-        // console.log('✅ DB 삭제 결과:', result.message); // 성공 로그 제거
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${result.message || response.statusText}`);
+        }
+
+        console.log(`✅ [${endpoint}] 응답:`, result);
         return result;
     } catch (error) {
-        console.error('❌ DB 삭제 중 오류:', error.message); // 오류 로그 유지
-        throw error;
+        console.error(`❌ [${endpoint}] 호출 중 에러:`, error.message);
+        return { status: 'error', message: error.message };
     }
 }
 
-export async function resetChat(userId) {
-    try {
-        const response = await fetch(`${API_URL}/reset`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId })
-        });
+// 메시지 전송
+export function sendChatMessage(userId, message) {
+    return postToApi('chat', { user_id: userId, message });
+}
 
-        if (!response.ok) {
-            throw new Error(`서버 에러 발생: ${response.statusText}`);
-        }
+// 서버에서 대화 삭제
+export function deleteConversationOnServer(userId, title) {
+    return postToApi('delete', { user_id: userId, title });
+}
 
-        return await response.json();
-    } catch (error) {
-        console.error('대화 초기화 중 에러:', error); // 오류 로그 유지
-        return { status: 'error', message: error.message };
-    }
+// 대화 초기화
+export function resetChat(userId) {
+    return postToApi('reset', { user_id: userId });
 }

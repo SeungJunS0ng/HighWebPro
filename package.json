@@ -1,4 +1,9 @@
 {
+  "name": "highwebproject",
+  "version": "1.0.0",
+  "description": "뉴스 요약 챗봇 프론트엔드",
+  "scripts": {},
+  "license": "ISC",
   "dependencies": {
     "dompurify": "^3.2.5"
   }

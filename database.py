@@ -5,6 +5,7 @@ import config
 
 DB_PATH = config.DB_PATH
 
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -20,6 +21,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def save_conversation(user_id, message, response):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -28,13 +30,16 @@ def save_conversation(user_id, message, response):
     conn.commit()
     conn.close()
 
+
 def get_conversation_history(user_id, limit=5):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT message, response FROM conversations WHERE user_id = ? ORDER BY id DESC LIMIT ?', (user_id, limit))
+    c.execute('SELECT message, response FROM conversations WHERE user_id = ? ORDER BY id DESC LIMIT ?',
+              (user_id, limit))
     rows = c.fetchall()
     conn.close()
     return rows[::-1]
+
 
 def clear_conversation_history(user_id):
     conn = sqlite3.connect(DB_PATH)
@@ -43,14 +48,26 @@ def clear_conversation_history(user_id):
     conn.commit()
     conn.close()
 
-# 새 함수: 특정 대화 삭제
+
+# ✅ 수정된 삭제 함수
 def delete_conversation_by_message(user_id, title):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # message가 title로 시작하는 대화 삭제
-    c.execute('DELETE FROM conversations WHERE user_id = ? AND message LIKE ?', (user_id, f"{title}%"))
+
+    # title이 '...'로 끝날 경우 앞부분만 비교
+    if title.endswith('...'):
+        like_pattern = f"{title[:-3]}%"
+    else:
+        like_pattern = f"{title}%"
+
+    c.execute('''
+        DELETE FROM conversations
+        WHERE user_id = ? AND message LIKE ?
+    ''', (user_id, like_pattern))
+
     conn.commit()
     conn.close()
+
 
 # 앱 실행 시 자동 DB 초기화
 if not os.path.exists(DB_PATH):

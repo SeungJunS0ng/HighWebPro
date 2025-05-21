@@ -16,10 +16,9 @@ import {
 const chatMessages = document.getElementById('chat-messages');
 const userInput = document.getElementById('user-input');
 let userId = localStorage.getItem('userId') || 'user_' + Math.random().toString(36).substring(2, 9);
-localStorage.setItem('userId', userId); // 디버깅 로그 제거
+localStorage.setItem('userId', userId);
 let currentConversationTitle = null;
 
-// 나머지 코드는 동일 (initApp, handleSendMessage, handleResetChat, renderSidebar, getCurrentConversationTitle, loadConversation)
 function initApp() {
     renderSidebar();
 
@@ -66,6 +65,7 @@ async function handleSendMessage() {
     }));
 
     const title = message.slice(0, 10) + (message.length > 10 ? '...' : '');
+    currentConversationTitle = title;
     saveConversation(title, messages);
     renderSidebar();
 }
@@ -91,6 +91,9 @@ function renderSidebar() {
 
     Object.entries(conversations).forEach(([title]) => {
         const li = document.createElement('li');
+        if (title === currentConversationTitle) {
+            li.classList.add('active');
+        }
 
         const span = document.createElement('span');
         span.textContent = title;
@@ -115,7 +118,7 @@ function renderSidebar() {
                     }
                     renderSidebar();
                 } catch (error) {
-                    console.error('대화 삭제 중 오류:', error); // 오류 로그 유지
+                    console.error('대화 삭제 중 오류:', error);
                     addMessageToUI(chatMessages, 'bot', '⚠️ 대화 삭제 중 오류가 발생했습니다.');
                 }
             }
@@ -127,16 +130,11 @@ function renderSidebar() {
     });
 }
 
-function getCurrentConversationTitle() {
-    const lastUserMessage = [...chatMessages.querySelectorAll('.user-message .message-content')]
-        .map(el => el.innerText.trim())[0];
-    return lastUserMessage ? lastUserMessage.slice(0, 10) + (lastUserMessage.length > 10 ? '...' : '') : '';
-}
-
 function loadConversation(messages, title) {
     currentConversationTitle = title;
     chatMessages.innerHTML = '';
     messages.forEach(msg => addMessageToUI(chatMessages, msg.type, msg.text));
+    userInput.focus();  // 포커싱 자동
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
