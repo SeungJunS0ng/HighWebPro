@@ -1,18 +1,13 @@
 import re
-import time
 import logging
 import numpy as np
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from sklearn.feature_extraction.text import TfidfVectorizer
+from concurrent.futures import ThreadPoolExecutor
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 def get_response(user_message, _=None):
     query = user_message.strip()
@@ -24,6 +19,7 @@ def get_response(user_message, _=None):
         first_sentence = result['summary'].split('.')[0].strip()
         result['title'] = first_sentence[:30] or query
     return result
+
 
 def crawl_news(query, max_links=10):
     links = get_naver_news_links(query, max_links)
@@ -41,15 +37,13 @@ def crawl_news(query, max_links=10):
     full_texts = []
     seen_links = set()
 
-    for link in links:
-        if link in seen_links:
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        contents = list(executor.map(fetch_naver_article_content, links))
+
+    for link, content in zip(links, contents):
+        if not content or link in seen_links or len(content.strip()) < 70:
             continue
         seen_links.add(link)
-
-        content = fetch_naver_article_content(link)
-        if not content or len(content.strip()) < 70:
-            continue
-
         title = extract_title_from_content(content)
         results.append({
             "title": title or link.split('/')[-1],
@@ -76,43 +70,27 @@ def crawl_news(query, max_links=10):
         "results": results
     }
 
-def get_naver_news_links(query, max_links=10, retry=2):
-    options = Options()
-    options.add_argument('--headless=new')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
 
-    for attempt in range(retry + 1):
-        try:
-            driver = webdriver.Chrome(options=options)
-            search_url = f"https://search.naver.com/search.naver?where=news&query={query}"
-            driver.get(search_url)
+def get_naver_news_links(query, max_links=10):
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    search_url = f"https://search.naver.com/search.naver?where=news&query={query}"
+    try:
+        res = requests.get(search_url, headers=headers, timeout=5)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        links = []
+        for a in soup.select('a[href*="naver.com"]'):
+            href = a.get('href')
+            if not href or any(sub in href for sub in ['promotion', 'event', 'static']):
+                continue
+            if re.search(r'(news|sports|entertain)\.naver\.com', href) and href not in links:
+                links.append(href)
+            if len(links) >= max_links:
+                break
+        return links
+    except Exception as e:
+        logging.warning(f"뉴스 링크 수집 실패: {e}")
+        return []
 
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="naver.com"]'))
-            )
-            news_elements = driver.find_elements(By.CSS_SELECTOR, 'a[href*="naver.com"]')
-            links = []
-            for el in news_elements:
-                href = el.get_attribute('href')
-                if not href:
-                    continue
-                if any(sub in href for sub in ['promotion', 'event', 'static']):
-                    continue
-                if re.search(r'(news|sports|entertain)\.naver\.com', href) and href not in links:
-                    links.append(href)
-                if len(links) >= max_links:
-                    break
-            return links
-        except Exception as e:
-            logging.warning(f"[시도 {attempt + 1}] 뉴스 링크 크롤링 실패: {e}")
-            time.sleep(1)
-        finally:
-            try:
-                driver.quit()
-            except:
-                pass
-    return []
 
 def fetch_naver_article_content(url):
     try:
@@ -121,9 +99,8 @@ def fetch_naver_article_content(url):
         soup = BeautifulSoup(res.text, 'html.parser')
 
         selectors = [
-            '#newsct_article', '#dic_area', '#articleBodyContents',
-            '#articeBody', 'article', '.newsct_article', '.content',
-            '#wrap #content .article_area', 'section.article_body'
+            '#dic_area', '#articleBodyContents', '#newsct_article',
+            '#articeBody', 'article', '.newsct_article', '.content'
         ]
         for selector in selectors:
             tag = soup.select_one(selector)
@@ -134,17 +111,6 @@ def fetch_naver_article_content(url):
         if og_desc and og_desc.get("content") and len(og_desc["content"].strip()) > 50:
             return og_desc["content"].strip()
 
-        for script in soup.find_all("script", type="application/ld+json"):
-            try:
-                import json
-                data = json.loads(script.string)
-                if isinstance(data, dict) and "articleBody" in data:
-                    text = data["articleBody"].strip()
-                    if len(text) > 50:
-                        return text
-            except Exception:
-                continue
-
         if soup.title:
             return soup.title.get_text(strip=True)
 
@@ -153,21 +119,24 @@ def fetch_naver_article_content(url):
         logging.warning(f"뉴스 본문 수집 실패 - URL: {url} / 에러: {e}")
         return ""
 
+
 def extract_title_from_content(content):
     sentences = re.split(r'[.!?]', content)
     return sentences[0].strip() if sentences else ""
 
+
 def clean_texts(texts):
     seen = set()
     return [
-        re.sub(r'\\s+', ' ', t.strip())
+        re.sub(r'\s+', ' ', t.strip())
         for t in texts
         if len(t.strip()) >= 30 and not (t in seen or seen.add(t))
     ]
 
+
 def summarize(texts, query, max_sentences=3):
     joined = ' '.join(texts)
-    sentences = [s.strip() for s in re.split(r'[.!?]', joined) if len(s.strip()) > 30]
+    sentences = [s.strip() for s in re.split(r'[.!?]', joined) if len(s.strip()) > 50]
 
     if not sentences:
         return "요약할 수 있는 정보가 부족합니다."
@@ -184,9 +153,9 @@ def summarize(texts, query, max_sentences=3):
     scores = (matrix[1:] @ matrix[0].T).toarray().flatten()
     top_indices = np.argsort(scores)[::-1]
 
-    selected = keyword_sentences + [remaining_sentences[i] for i in top_indices if remaining_sentences[i] not in keyword_sentences]
+    selected = keyword_sentences + [
+        remaining_sentences[i]
+        for i in top_indices if remaining_sentences[i] not in keyword_sentences
+    ]
     summary = ' '.join(selected[:max_sentences])
-
-    if not summary.endswith('.'):
-        summary += '.'
-    return summary
+    return summary if summary.endswith('.') else summary + '.'

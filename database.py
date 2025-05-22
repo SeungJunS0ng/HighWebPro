@@ -49,7 +49,7 @@ def clear_conversation_history(user_id):
     conn.close()
 
 
-# ✅ 수정된 삭제 함수
+# 삭제 함수
 def delete_conversation_by_message(user_id, title):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()

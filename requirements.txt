@@ -1,11 +1,14 @@
 # 📦 requirements-full.txt (최종 백엔드 패키지 목록)
 # 설치 명령어 -> pip install -r requirements-full.txt
 
-flask==2.0.1
-flask-cors==3.0.10
-requests==2.31.0
+flask==2.0.1             # 웹 서버 라우팅
+flask-cors==3.0.10       # CORS 허용
+requests==2.31.0         # 뉴스 본문 요청
+beautifulsoup4==4.12.3   # HTML 파싱
+selenium==4.20.0         # 뉴스 링크 크롤링 (ChromeDriver 사용)
+numpy>=1.21.0            # 유사도 계산
 gunicorn==21.2.0         # 선택적, 배포 환경용
 werkzeug==2.0.0          # flask 의존성
 numpy>=1.21.0            # TF-IDF 유사도 계산
-scikit-learn>=0.24.0     # TfidfVectorizer
+scikit-learn>=0.24.0     # TfidfVectorizer 사용
 python-dotenv>=0.21.0    # .env 환경변수 지원
