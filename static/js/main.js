@@ -34,6 +34,12 @@ function showBotError(message) {
     addMessageToUI(chatMessages, BOT, `⚠️ ${message}`);
 }
 
+// ✅ 다크모드 버튼 텍스트 업데이트 함수
+function updateDarkModeButton(isDark) {
+    const btn = document.getElementById('darkmode-toggle');
+    btn.textContent = isDark ? '☀️ 밝게' : '🌙 어둡게';
+}
+
 // ✅ 초기화 관련 함수 분리
 async function loadInitialConversations() {
     const localConversations = loadConversations();
@@ -53,7 +59,9 @@ function setupEventListeners() {
     document.getElementById('send-btn').onclick = handleSendMessage;
     document.getElementById('reset-btn').onclick = handleResetChat;
     document.getElementById('darkmode-toggle').onclick = () => {
-        saveDarkModeState(toggleDarkMode());
+        const isDark = toggleDarkMode();
+        updateDarkModeButton(isDark);
+        saveDarkModeState(isDark);
     };
 
     userInput.onkeypress = (e) => {
@@ -66,9 +74,11 @@ async function initApp() {
     await loadInitialConversations();
     renderSidebar();
 
-    if (loadDarkModeState()) {
+    const isDark = loadDarkModeState();
+    if (isDark) {
         document.body.classList.add('dark');
     }
+    updateDarkModeButton(isDark);
 
     setupEventListeners();
 }
