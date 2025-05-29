@@ -61,8 +61,9 @@ async function handleSendMessage() {
 
     const messages = Array.from(chatMessages.querySelectorAll('.message')).map(div => ({
         type: div.classList.contains('user-message') ? 'user' : 'bot',
-        text: div.innerHTML
+        text: div.querySelector('.message-content')?.innerHTML || ''
     }));
+
 
     const title = message.slice(0, 10) + (message.length > 10 ? '...' : '');
     currentConversationTitle = title;
@@ -133,8 +134,14 @@ function renderSidebar() {
 function loadConversation(messages, title) {
     currentConversationTitle = title;
     chatMessages.innerHTML = '';
-    messages.forEach(msg => addMessageToUI(chatMessages, msg.type, msg.text));
-    userInput.focus();  // 포커싱 자동
+
+    messages.forEach(msg => {
+        const type = msg.type === 'user' ? 'user' : 'bot';
+        addMessageToUI(chatMessages, type, msg.text);
+    });
+
+    userInput.focus();
 }
+
 
 document.addEventListener('DOMContentLoaded', initApp);
