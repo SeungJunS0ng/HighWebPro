@@ -1,11 +1,16 @@
-export function addMessageToUI(chatMessages, type, content, options = {}) {
+ export function addMessageToUI(chatMessages, type, content, options = {}) {
     const div = document.createElement('div');
     div.className = `message ${type}-message`;
-    div.setAttribute('data-role', type); // 사용자/봇 구분용
+    div.setAttribute('data-role', type);
 
     const inner = document.createElement('div');
     inner.className = 'message-content';
-    inner.innerHTML = content;
+
+    if (type === 'user') {
+        inner.textContent = content;
+    } else {
+        inner.innerHTML = DOMPurify.sanitize(content);
+    }
 
     div.appendChild(inner);
     chatMessages.appendChild(div);

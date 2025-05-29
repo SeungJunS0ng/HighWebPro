@@ -5,6 +5,6 @@
   "scripts": {},
   "license": "ISC",
   "dependencies": {
-    "dompurify": "^3.2.5"
+    "dompurify": "^3.2.6"
   }
 }
