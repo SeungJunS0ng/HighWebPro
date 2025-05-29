@@ -27,8 +27,8 @@ def chat():
         response_data = get_response(user_message, history)
 
         if response_data.get("status") == "success":
-            db.save_conversation(user_id, user_message, response_data.get("summary", ""))
-
+            title = user_message[:10] + ('...' if len(user_message) > 10 else '')
+            db.save_conversation(user_id, title, user_message, response_data.get("summary", ""))
         return jsonify(response_data)
     except Exception as e:
         return jsonify({"status": "error", "message": f"서버 오류: {str(e)}"}), 500

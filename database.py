@@ -13,6 +13,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS conversations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT,
+            title TEXT, 
             message TEXT,
             response TEXT,
             timestamp TEXT
@@ -22,13 +23,16 @@ def init_db():
     conn.close()
 
 
-def save_conversation(user_id, message, response):
+def save_conversation(user_id, title, message, response):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('INSERT INTO conversations (user_id, message, response, timestamp) VALUES (?, ?, ?, ?)',
-              (user_id, message, response, datetime.now().isoformat()))
+    c.execute('''
+        INSERT INTO conversations (user_id, title, message, response, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (user_id, title, message, response, datetime.now().isoformat()))
     conn.commit()
     conn.close()
+
 
 
 def get_conversation_history(user_id, limit=5):
@@ -53,21 +57,12 @@ def clear_conversation_history(user_id):
 def delete_conversation_by_message(user_id, title):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-
-    # title이 '...'로 끝날 경우 앞부분만 비교
-    if title.endswith('...'):
-        like_pattern = f"{title[:-3]}%"
-    else:
-        like_pattern = f"{title}%"
-
     c.execute('''
         DELETE FROM conversations
-        WHERE user_id = ? AND message LIKE ?
-    ''', (user_id, like_pattern))
-
+        WHERE user_id = ? AND title = ?
+    ''', (user_id, title))
     conn.commit()
     conn.close()
-
 
 # 앱 실행 시 자동 DB 초기화
 if not os.path.exists(DB_PATH):
