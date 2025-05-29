@@ -1,4 +1,9 @@
-import { sendChatMessage, resetChat, deleteConversationOnServer, fetchConversationTitles } from './chat.js';
+import {
+    sendChatMessage,
+    resetChat,
+    deleteConversationOnServer,
+    fetchConversationTitles
+} from './chat.js';
 import {
     saveConversation,
     loadConversations,
@@ -13,31 +18,38 @@ import {
     toggleDarkMode
 } from './ui.js';
 
+// ✅ 상수 선언
+const BOT = 'bot';
+const USER = 'user';
+const LOCAL_KEY = 'chatbot_conversations';
+
 const chatMessages = document.getElementById('chat-messages');
 const userInput = document.getElementById('user-input');
 let userId = localStorage.getItem('userId') || 'user_' + Math.random().toString(36).substring(2, 9);
 localStorage.setItem('userId', userId);
 let currentConversationTitle = null;
 
-async function initApp() {
+// ✅ 에러 메시지 출력 함수
+function showBotError(message) {
+    addMessageToUI(chatMessages, BOT, `⚠️ ${message}`);
+}
+
+// ✅ 초기화 관련 함수 분리
+async function loadInitialConversations() {
     const localConversations = loadConversations();
     const serverTitles = await fetchConversationTitles(userId);
 
-    // 서버에 있는 대화 제목을 localStorage에 반영 (없으면 빈 메시지로)
     serverTitles.forEach(title => {
         if (!localConversations[title]) {
             localConversations[title] = [];
         }
     });
 
-    localStorage.setItem('chatbot_conversations', JSON.stringify(localConversations));
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(localConversations));
+}
 
-    renderSidebar();
-
-    if (loadDarkModeState()) {
-        document.body.classList.add('dark');
-    }
-
+// ✅ 이벤트 리스너 분리
+function setupEventListeners() {
     document.getElementById('send-btn').onclick = handleSendMessage;
     document.getElementById('reset-btn').onclick = handleResetChat;
     document.getElementById('darkmode-toggle').onclick = () => {
@@ -49,30 +61,43 @@ async function initApp() {
     };
 }
 
+// ✅ 앱 초기화
+async function initApp() {
+    await loadInitialConversations();
+    renderSidebar();
+
+    if (loadDarkModeState()) {
+        document.body.classList.add('dark');
+    }
+
+    setupEventListeners();
+}
+
+// ✅ 메시지 전송 처리
 async function handleSendMessage() {
     const message = userInput.value.trim();
     if (!message) return;
 
     userInput.value = '';
     userInput.disabled = true;
-    addMessageToUI(chatMessages, 'user', message);
+    addMessageToUI(chatMessages, USER, message);
 
     const typing = addTypingIndicator(chatMessages);
 
     try {
         const data = await sendChatMessage(userId, message);
         chatMessages.removeChild(typing);
-        addMessageToUI(chatMessages, 'bot', formatBotMessage(data));
+        addMessageToUI(chatMessages, BOT, formatBotMessage(data));
     } catch (error) {
         chatMessages.removeChild(typing);
-        addMessageToUI(chatMessages, 'bot', '⚠️ 서버 응답 중 오류가 발생했습니다.');
+        showBotError('서버 응답 중 오류가 발생했습니다.');
     } finally {
         userInput.disabled = false;
         userInput.focus();
     }
 
     const messages = Array.from(chatMessages.querySelectorAll('.message')).map(div => ({
-        type: div.classList.contains('user-message') ? 'user' : 'bot',
+        type: div.classList.contains('user-message') ? USER : BOT,
         text: div.querySelector('.message-content')?.innerHTML || ''
     }));
 
@@ -82,20 +107,22 @@ async function handleSendMessage() {
     renderSidebar();
 }
 
+// ✅ 대화 초기화
 async function handleResetChat() {
     try {
         const data = await resetChat(userId);
         chatMessages.innerHTML = '';
         if (data.status === 'success') {
-            addMessageToUI(chatMessages, 'bot', '안녕하세요! 챗봇입니다. 어떤 정보가 필요하신가요?');
+            addMessageToUI(chatMessages, BOT, '안녕하세요! 챗봇입니다. 어떤 정보가 필요하신가요?');
         } else {
-            addMessageToUI(chatMessages, 'bot', `⚠️ ${data.message}`);
+            showBotError(data.message);
         }
     } catch (error) {
-        addMessageToUI(chatMessages, 'bot', '⚠️ 대화 초기화 중 오류가 발생했습니다.');
+        showBotError('대화 초기화 중 오류가 발생했습니다.');
     }
 }
 
+// ✅ 사이드바 렌더링
 function renderSidebar() {
     const list = document.getElementById('conversation-list');
     list.innerHTML = '';
@@ -115,7 +142,6 @@ function renderSidebar() {
 
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '🗑';
-
         deleteBtn.onclick = async (e) => {
             e.stopPropagation();
             if (confirm(`"${title}" 대화를 삭제하시겠습니까?`)) {
@@ -126,12 +152,11 @@ function renderSidebar() {
                     if (title === currentConversationTitle) {
                         currentConversationTitle = null;
                         chatMessages.innerHTML = '';
-                        addMessageToUI(chatMessages, 'bot', '🗑 대화가 삭제되었습니다.');
+                        addMessageToUI(chatMessages, BOT, '🗑 대화가 삭제되었습니다.');
                     }
                     renderSidebar();
                 } catch (error) {
-                    console.error('대화 삭제 중 오류:', error);
-                    addMessageToUI(chatMessages, 'bot', '⚠️ 대화 삭제 중 오류가 발생했습니다.');
+                    showBotError('대화 삭제 중 오류가 발생했습니다.');
                 }
             }
         };
@@ -142,12 +167,13 @@ function renderSidebar() {
     });
 }
 
+// ✅ 대화 불러오기
 function loadConversation(messages, title) {
     currentConversationTitle = title;
     chatMessages.innerHTML = '';
 
     messages.forEach(msg => {
-        const type = msg.type === 'user' ? 'user' : 'bot';
+        const type = msg.type === USER ? USER : BOT;
         addMessageToUI(chatMessages, type, msg.text);
     });
 
