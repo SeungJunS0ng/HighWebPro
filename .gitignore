@@ -1,28 +1,23 @@
-# Python
+# Python 가상환경
+.venv/
 __pycache__/
-*.py[cod]
-*.sqlite3
-*.db
+*.pyc
+*.pyo
+
+# 환경 설정 파일
 .env
-*.log
 
-# Node
+# SQLite DB (필요 시만 포함)
+*.db
+*.sqlite3
+
+# Node.js 의존성
 node_modules/
-npm-debug.log
-yarn-error.log
-package-lock.json
 
-# Flask + Frontend
-instance/
-dist/
-build/
-*.bak
-*.swp
-
-# IDE
+# 편집기 설정
 .vscode/
 .idea/
 
-# OS
+# OS 임시파일
 .DS_Store
 Thumbs.db
