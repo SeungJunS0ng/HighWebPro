@@ -64,6 +64,15 @@ def delete_conversation_by_message(user_id, title):
     conn.commit()
     conn.close()
 
+def get_conversation_titles(user_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT DISTINCT title FROM conversations WHERE user_id = ? ORDER BY id DESC', (user_id,))
+    rows = [r[0] for r in c.fetchall()]
+    conn.close()
+    return rows
+
+
 # 앱 실행 시 자동 DB 초기화
 if not os.path.exists(DB_PATH):
     init_db()

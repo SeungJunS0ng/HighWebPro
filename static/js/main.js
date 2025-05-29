@@ -1,4 +1,4 @@
-import { sendChatMessage, resetChat, deleteConversationOnServer } from './chat.js';
+import { sendChatMessage, resetChat, deleteConversationOnServer, fetchConversationTitles } from './chat.js';
 import {
     saveConversation,
     loadConversations,
@@ -19,7 +19,19 @@ let userId = localStorage.getItem('userId') || 'user_' + Math.random().toString(
 localStorage.setItem('userId', userId);
 let currentConversationTitle = null;
 
-function initApp() {
+async function initApp() {
+    const localConversations = loadConversations();
+    const serverTitles = await fetchConversationTitles(userId);
+
+    // 서버에 있는 대화 제목을 localStorage에 반영 (없으면 빈 메시지로)
+    serverTitles.forEach(title => {
+        if (!localConversations[title]) {
+            localConversations[title] = [];
+        }
+    });
+
+    localStorage.setItem('chatbot_conversations', JSON.stringify(localConversations));
+
     renderSidebar();
 
     if (loadDarkModeState()) {
@@ -63,7 +75,6 @@ async function handleSendMessage() {
         type: div.classList.contains('user-message') ? 'user' : 'bot',
         text: div.querySelector('.message-content')?.innerHTML || ''
     }));
-
 
     const title = message.slice(0, 10) + (message.length > 10 ? '...' : '');
     currentConversationTitle = title;
@@ -142,6 +153,5 @@ function loadConversation(messages, title) {
 
     userInput.focus();
 }
-
 
 document.addEventListener('DOMContentLoaded', initApp);

@@ -37,3 +37,20 @@ export function deleteConversationOnServer(userId, title) {
 export function resetChat(userId) {
     return postToApi('reset', { user_id: userId });
 }
+
+export async function fetchConversationTitles(userId) {
+    const res = await fetch(`${API_URL}/conversations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+    });
+
+    const data = await res.json();
+    if (data.status === 'success') {
+        return data.titles;
+    } else {
+        console.warn('❌ 대화 목록 가져오기 실패:', data.message);
+        return [];
+    }
+}
+

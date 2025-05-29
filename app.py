@@ -63,5 +63,19 @@ def delete_conversation():
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'서버 오류: {str(e)}'}), 500
 
+@app.route('/api/conversations', methods=['POST'])
+def list_conversations():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({'status': 'error', 'message': 'user_id가 필요합니다.'}), 400
+
+        titles = db.get_conversation_titles(user_id)
+        return jsonify({'status': 'success', 'titles': titles})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=config.DEBUG, host=config.HOST, port=config.PORT)
