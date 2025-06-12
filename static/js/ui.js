@@ -1,4 +1,4 @@
- export function addMessageToUI(chatMessages, type, content, options = {}) {
+export function addMessageToUI(chatMessages, type, content, options = {}) {
     const div = document.createElement('div');
     div.className = `message ${type}-message`;
     div.setAttribute('data-role', type);
@@ -9,7 +9,10 @@
     if (type === 'user') {
         inner.textContent = content;
     } else {
-        inner.innerHTML = DOMPurify.sanitize(content);
+        // target, rel 속성 허용 추가
+        inner.innerHTML = DOMPurify.sanitize(content, {
+            ADD_ATTR: ['target', 'rel']
+        });
     }
 
     div.appendChild(inner);
@@ -70,7 +73,9 @@ export function formatBotMessage(data) {
 
         if (filtered.length > 0) {
             msg += `<strong>📰 관련 뉴스:</strong><ul>` +
-                filtered.map(item => `<li><a href="${item.link}" target="_blank">${item.title}</a></li>`).join('') +
+                filtered.map(item =>
+                    `<li><a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a></li>`
+                ).join('') +
                 `</ul>`;
         } else {
             msg += `<em>관련 뉴스가 없습니다.</em>`;
